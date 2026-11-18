@@ -203,7 +203,11 @@ pub enum Cmd {
 
     /// 更新 tapd 到最新版本
     #[command(name = "update")]
-    Update,
+    Update {
+        /// 仅检查是否有新版本，不执行安装
+        #[arg(long)]
+        check: bool,
+    },
 
     /// 获取需求关联的缺陷 ID
     RelatedBugs {
@@ -267,6 +271,9 @@ define_actions!(CommentAction {
     #[command(alias = "ls")]
     List,
     /// 创建评论
+    ///
+    /// 标准版需传 `entry_id=ID`、`description=内容` 和 `entry_type=stories|tasks|bug|bug_remark`。
+    /// `entry_type=story` 和 `entry_type=task` 也可用。
     Create,
     /// 更新评论
     Update,

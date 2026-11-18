@@ -13,18 +13,18 @@ TAPD 项目管理命令行工具（Rust），**专为 AI Agent 设计**。
 从 GitHub Releases 下载预编译二进制：
 
 ```bash
-# macOS (Apple Silicon / Intel)
-curl -Lo tapd "https://github.com/nicholasgasior/tapd-cli/releases/latest/download/tapd-macos"
+# macOS (Apple Silicon)
+curl -Lo tapd "https://github.com/nightlysnow/tapd-cli/releases/latest/download/tapd-macos"
 chmod +x tapd
 sudo mv tapd /usr/local/bin/
 
 # Linux x86_64
-curl -Lo tapd "https://github.com/nicholasgasior/tapd-cli/releases/latest/download/tapd-linux"
+curl -Lo tapd "https://github.com/nightlysnow/tapd-cli/releases/latest/download/tapd-linux"
 chmod +x tapd
 sudo mv tapd /usr/local/bin/
 ```
 
-> 始终安装最新版本。如需指定版本，将 URL 中的 `latest` 替换为版本号（如 `v0.1.8`）。
+> 始终安装最新版本。如需指定版本，将 URL 中的 `latest` 替换为版本号（如 `v0.2.1`）。macOS Intel 和 Linux arm64 可在 [GitHub Releases](https://github.com/nightlysnow/tapd-cli/releases) 下载对应的 `.tar.gz`。
 
 从源码编译：
 
@@ -220,7 +220,7 @@ tapd --raw bug list -w 12345678 status=open | jq '.[] | {id: .Bug.id, title: .Bu
 本仓库通过 GitHub Actions 自动构建和发布：
 
 1. 推送 `v*` tag 触发 CI
-2. 自动编译 macOS (Apple Silicon / Intel) 和 Linux x86_64 二进制
+2. 自动编译 macOS (Apple Silicon / Intel) 和 Linux (x86_64 / arm64) 二进制
 3. 自动创建 GitHub Release 并上传产物
 4. 用户可通过 `tapd update` 自动更新到最新版本
 

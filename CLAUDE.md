@@ -4,7 +4,7 @@
 
 tapd-cli — TAPD 项目管理命令行工具（Rust），专为 AI Agent 设计。通过 Claude Code Skill 实现自然语言操作 TAPD。
 
-- 当前版本：0.1.8
+- 当前版本：0.2.1
 - 二进制名：`tapd`
 - 仓库：`github.com/nightlysnow/tapd-cli`
 
@@ -15,7 +15,7 @@ tapd-cli — TAPD 项目管理命令行工具（Rust），专为 AI Agent 设计
 cargo build
 
 # Release 构建
-cargo build --release
+cargo build --release --no-default-features
 ```
 
 ## 发布
@@ -32,8 +32,6 @@ src/
 ├── client.rs   # TAPD API 客户端
 ├── config.rs   # 配置加载（.env）
 └── main.rs     # 入口 + self-update 逻辑
-scripts/
-└── release-macos.sh  # macOS Universal Binary 构建+上传脚本
 ```
 
 ## 认证配置

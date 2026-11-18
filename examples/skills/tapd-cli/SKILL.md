@@ -1,6 +1,6 @@
 ---
 name: tapd-cli
-description: Use the tapd CLI tool to query, create, and manage TAPD project items (stories, bugs, tasks, iterations, wikis, comments, test cases, timesheets, releases). Invoke this skill whenever the user wants to interact with TAPD — searching items, checking status, creating or updating stories/bugs/tasks, viewing backlogs/sprints, logging work hours, querying workflows, or checking release plans. Triggers on "tapd", "TAPD", "需求", "缺陷", "bug", "story", "迭代", "sprint", "待办", "工时", "timesheet", "发布计划", "工作流", or any request involving TAPD project management operations. Also triggers when user mentions a TAPD workspace ID, references tapd.cn URLs, or asks about project items tracked in TAPD.
+description: Use the tapd CLI tool to query, create, and manage TAPD project items (stories, bugs, tasks, iterations, wikis, comments, test cases, timesheets, releases). Invoke this skill whenever the user wants to interact with TAPD — searching items, checking status, creating or updating stories/bugs/tasks, viewing backlogs/sprints, logging work hours, querying workflows, checking release plans, or sending notifications via WeCom bot. Triggers on "tapd", "TAPD", "需求", "缺陷", "bug", "story", "迭代", "sprint", "待办", "工时", "timesheet", "发布计划", "工作流", "企业微信", "wecom", or any request involving TAPD project management operations. Also triggers when user mentions a TAPD workspace ID, references tapd.cn URLs, or asks about project items tracked in TAPD.
 ---
 
 # tapd — TAPD 项目管理 CLI
@@ -9,9 +9,13 @@ description: Use the tapd CLI tool to query, create, and manage TAPD project ite
 
 ## 前置条件
 
-`tapd` 的认证信息配置在项目目录的 `.env` 文件中。如果遇到认证错误，提示用户检查该文件。
+`tapd` 的认证信息配置在项目目录的 `.env` 文件中。如果遇到认证错误，提示用户检查该文件中的凭证配置（`TAPD_ACCESS_TOKEN` 或 `TAPD_API_USER` + `TAPD_API_PASSWORD`）。
 
 `-w` 参数支持从环境变量 `TAPD_DEFAULT_WORKSPACE_ID` 读取默认值。如果 `.env` 中已配置该变量，所有命令都可以省略 `-w`。
+
+可选配置：
+- `BOT_URL` — 企业微信机器人 Webhook 地址（`wecom` 命令需要）
+- `CURRENT_USER_NICK` — 用户昵称（可从 Token 自动获取）
 
 ## 命令速览
 
@@ -34,8 +38,10 @@ tapd release -w <ID>                    # 发布计划
 tapd attachment -w <ID>                 # 附件
 tapd image -w <ID> --image-path <path>  # 图片链接
 tapd commit-msg -w <ID> --object-id <ID> -t <type>  # 提交关键字
+tapd wecom --msg "内容"                  # 企业微信通知
 tapd relation -w <ID>                   # 关联关系
 tapd related-bugs -w <ID> --story-id <ID>  # 需求关联缺陷
+tapd update [--check]                   # 更新到最新版本（--check 仅检查不安装）
 ```
 
 ## 核心用法
@@ -124,8 +130,10 @@ tapd iteration list -w <ID> status=open            # 迭代列表
 tapd story create -w <ID> name="用户登录优化" priority=high description="优化登录流程"
 tapd bug create -w <ID> title="页面崩溃" severity=serious module=前端
 tapd task create -w <ID> name="编写单元测试" story_id=123 owner=李四
-tapd comment create -w <ID> entry_id=123 description="已修复，请复核"
+tapd comment create -w <ID> entry_type=stories entry_id=123 description="已修复，请复核"
 ```
+
+标准版创建评论时需指定 `entry_type`。需求用 `stories`，任务用 `tasks`，缺陷用 `bug`，缺陷流转评论用 `bug_remark`。
 
 **缺陷严重程度**对照：
 
@@ -168,6 +176,24 @@ tapd field info -w <ID>            # 字段及候选值
 tapd custom-fields -w <ID> -t stories  # 自定义字段配置
 ```
 
+### 企业微信通知
+
+通过 `wecom` 命令发送消息到企业微信群机器人（需要在 `.env` 中配置 `BOT_URL`）：
+
+```bash
+tapd wecom --msg "部署完成，请验证"
+tapd wecom --msg "# 迭代进展\n- 需求完成 8/10\n- 缺陷剩余 3 个"
+```
+
+消息支持 Markdown 格式。如果内容包含 `@` 提及人员，会使用标准 markdown 类型发送。
+
+### 关联关系
+
+```bash
+tapd relation -w <ID> source_type=story source_id=123 target_type=bug target_id=456
+tapd related-bugs -w <ID> --story-id 123    # 快捷查需求关联的缺陷
+```
+
 ## 处理 JSON 输出
 
 `tapd` 返回 JSON，用 `jaq` 提取需要的信息：
@@ -185,3 +211,4 @@ tapd --raw story list -w <ID> | jaq 'group_by(.Story.status) | map({status: .[0]
 - 输出是嵌套结构，实体数据在 `Story`/`Bug`/`Task` 等键下面
 - `list` 子命令有 `ls` 别名
 - `todo` 命令的 workspace ID 是可选的，不传会查所有项目
+- 更新 tapd 自身用 `tapd update`，只想检查有无新版本不安装用 `tapd update --check`

@@ -1,11 +1,30 @@
 use std::collections::HashMap;
+use std::fmt;
 
 use anyhow::{bail, Context, Result};
 use base64::Engine;
-use reqwest::blocking::Client;
+use reqwest::{blocking::Client, StatusCode};
 use serde_json::{json, Map, Value};
 
 use crate::config::Config;
+
+#[derive(Debug)]
+struct ApiError {
+    status: StatusCode,
+    body: String,
+}
+
+impl fmt::Display for ApiError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.status == StatusCode::UNAUTHORIZED {
+            f.write_str("认证失败: 凭证无效或已过期，请检查 .env 中的认证配置")
+        } else {
+            write!(f, "API 错误 ({}): {}", self.status, self.body)
+        }
+    }
+}
+
+impl std::error::Error for ApiError {}
 
 pub struct TapdClient {
     http: Client,
@@ -61,7 +80,9 @@ impl TapdClient {
                         .map(String::from);
                 }
                 Err(e) => {
-                    if e.to_string().contains("认证失败") {
+                    if e.downcast_ref::<ApiError>()
+                        .is_some_and(|error| error.status == StatusCode::UNAUTHORIZED)
+                    {
                         bail!("凭证无效或已过期，请检查 {auth_hint} 配置");
                     }
                 }
@@ -169,15 +190,12 @@ impl TapdClient {
     fn parse_response(resp: reqwest::blocking::Response) -> Result<Value> {
         let status = resp.status();
         let body = resp.text().context("读取响应体失败")?;
+        Self::parse_response_body(status, body)
+    }
+
+    fn parse_response_body(status: StatusCode, body: String) -> Result<Value> {
         if !status.is_success() {
-            if status.as_u16() == 401 || status.as_u16() == 422 {
-                if body.contains("invalid") || body.contains("unauthorized") {
-                    bail!(
-                        "认证失败: 凭证无效或已过期，请检查 .env 中的认证配置"
-                    );
-                }
-            }
-            bail!("API 错误 ({status}): {body}");
+            return Err(ApiError { status, body }.into());
         }
         serde_json::from_str(&body).context("JSON 解析失败")
     }
@@ -218,4 +236,31 @@ pub fn to_json(params: &HashMap<String, String>) -> Value {
         })
         .collect();
     Value::Object(map)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validation_errors_preserve_status_and_body() {
+        for body in ["invalid entry_type story", "entry_type is required"] {
+            let error =
+                TapdClient::parse_response_body(StatusCode::UNPROCESSABLE_ENTITY, body.into())
+                    .expect_err("HTTP 422 should be reported as an API error");
+
+            assert_eq!(
+                error.to_string(),
+                format!("API 错误 (422 Unprocessable Entity): {body}")
+            );
+        }
+    }
+
+    #[test]
+    fn unauthorized_status_reports_auth_failure() {
+        let error = TapdClient::parse_response_body(StatusCode::UNAUTHORIZED, String::new())
+            .expect_err("HTTP 401 should be reported as an authentication failure");
+
+        assert!(error.to_string().contains("认证失败"), "{error}");
+    }
 }
